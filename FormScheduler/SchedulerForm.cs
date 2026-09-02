@@ -238,6 +238,15 @@ namespace FormScheduler
                 }
 
                 lciHour.Size = new System.Drawing.Size(250, rowHeight);
+
+                // Fixa também as linhas seguintes: sem isto, a altura da 2ª linha calculada pela
+                // LayoutControl podia variar 1px consoante o controlo lá dentro (CheckEdit vs
+                // SpinEdit), empurrando "Ativo"/"Argumento"/a grelha para posições ligeiramente
+                // diferentes entre os dois modos mensais.
+                int row2Bottom = rowY + rowHeight;
+                layoutControlItem1.Location = new System.Drawing.Point(0, row2Bottom);
+                lciArgument.Location = new System.Drawing.Point(0, row2Bottom + layoutControlItem1.Size.Height);
+                layoutControlGroup1.Location = new System.Drawing.Point(0, row2Bottom + layoutControlItem1.Size.Height + lciArgument.Size.Height);
             }
             finally
             {
