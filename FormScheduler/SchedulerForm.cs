@@ -1,13 +1,13 @@
+using FormScheduler.Models;
+using FormScheduler.Models.Enums;
 using DevExpress.XtraBars;
 using DevExpress.XtraEditors;
 using DevExpress.XtraEditors.Controls;
 using DevExpress.XtraGrid.Views.Base;
 using DevExpress.XtraLayout.Utils;
 using DevExpress.XtraSplashScreen;
-using FormScheduler.Helpers;
-using FormScheduler.Models;
-using FormScheduler.Models.Enums;
 using Microsoft.Win32.TaskScheduler;
+using FormScheduler.Helpers;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,10 +17,10 @@ using System.Windows.Forms;
 namespace FormScheduler
 {
     /// <summary>
-    /// Form reutilizável para configurar agendamentos (Windows Task Scheduler) de execuções
-    /// periódicas de um executável: diário, semanal, mensal (dia fixo ou 1º dia útil do mês, com
-    /// offset em dias corridos). Persiste os agendamentos configurados em Schedules\schedules.json
-    /// (ao lado do executável do processo anfitrião).
+    /// Versão standalone (Form) do agendador - conteúdo idêntico a SchedulerUserControl, para uso
+    /// direto sem necessidade de o hospedar dentro de outro form/painel. Mantida como cópia
+    /// intencional (não composição) para que ambas - UserControl e Form - possam ser reutilizadas
+    /// de forma independente noutros projetos.
     /// </summary>
     public partial class SchedulerForm : XtraForm
     {
@@ -188,6 +188,7 @@ namespace FormScheduler
         private void AtualizarVisibilidadeControlos()
         {
             layoutControl1.BeginUpdate();
+            lcgControl.BestFit();
             try
             {
                 lciDayOfWeek.Visibility = LayoutVisibility.Never;
@@ -195,64 +196,33 @@ namespace FormScheduler
                 lciDiaUtilMensal.Visibility = LayoutVisibility.Never;
                 lciOffsetDias.Visibility = LayoutVisibility.Never;
 
-                const int monthlySlotWidth = 220;
-                const int rowHeight = 26;
-                const int rowY = 39;
-
                 // 0 = Diário | 1 = Weekly | 2 = Monthly
                 switch (rgFrequency.SelectedIndex)
                 {
                     case 0:
                         // Diário: Apenas a hora
-                        lciHour.Location = new System.Drawing.Point(0, rowY);
                         break;
                     case 1:
                         // Weekly: Mostra a escolha dos dias da semana
                         lciDayOfWeek.Visibility = LayoutVisibility.Always;
-                        lciDayOfWeek.Location = new System.Drawing.Point(0, rowY);
-                        lciDayOfWeek.Size = new System.Drawing.Size(monthlySlotWidth * 2, rowHeight);
-                        lciHour.Location = new System.Drawing.Point(monthlySlotWidth * 2, rowY);
                         break;
                     case 2:
                         // Monthly: 1º dia útil do mês (checkbox) + dia fixo OU dias a somar, no
                         // mesmo slot (mutuamente exclusivos), sempre seguido da hora.
                         lciDiaUtilMensal.Visibility = LayoutVisibility.Always;
-                        lciDiaUtilMensal.Location = new System.Drawing.Point(0, rowY);
-                        lciDiaUtilMensal.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
-
-                        // seDayOfMonth e seOffsetDias têm de ter exatamente o mesmo tamanho: com
-                        // larguras diferentes (ex.: um SpinEdit estreito vs largo), a DevExpress
-                        // arredonda a altura interna do glifo de forma diferente e o controlo
-                        // visível acaba 1px mais baixo/alto consoante qual dos dois está ativo.
                         seDayOfMonth.Size = seOffsetDias.Size;
 
                         if (ceDiaUtilMensal.Checked)
                         {
                             lciOffsetDias.Visibility = LayoutVisibility.Always;
-                            lciOffsetDias.Location = new System.Drawing.Point(monthlySlotWidth, rowY);
-                            lciOffsetDias.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
                         }
                         else
                         {
                             lciDayOfMonth.Visibility = LayoutVisibility.Always;
-                            lciDayOfMonth.Location = new System.Drawing.Point(monthlySlotWidth, rowY);
-                            lciDayOfMonth.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
                         }
 
-                        lciHour.Location = new System.Drawing.Point(monthlySlotWidth * 2, rowY);
                         break;
                 }
-
-                lciHour.Size = new System.Drawing.Size(250, rowHeight);
-
-                // Fixa também as linhas seguintes: sem isto, a altura da 2ª linha calculada pela
-                // LayoutControl podia variar 1px consoante o controlo lá dentro (CheckEdit vs
-                // SpinEdit), empurrando "Ativo"/"Argumento"/a grelha para posições ligeiramente
-                // diferentes entre os dois modos mensais.
-                int row2Bottom = rowY + rowHeight;
-                layoutControlItem1.Location = new System.Drawing.Point(0, row2Bottom);
-                lciArgument.Location = new System.Drawing.Point(0, row2Bottom + layoutControlItem1.Size.Height);
-                layoutControlGroup1.Location = new System.Drawing.Point(0, row2Bottom + layoutControlItem1.Size.Height + lciArgument.Size.Height);
             }
             finally
             {
