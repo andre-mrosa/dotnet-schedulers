@@ -177,34 +177,72 @@ namespace FormScheduler
             }
         }
 
+        /// <summary>
+        /// Reposiciona explicitamente os itens da 2ª linha (dia da semana / dia do mês / 1º dia
+        /// útil + dias a somar / hora) em vez de confiar só em Visibility + BestFit(). O
+        /// colapso automático de espaço da LayoutControl quando um item é escondido depende da
+        /// ordem/pesos internos e não estava a libertar o espaço de forma fiável com 4 itens
+        /// concorrentes nesta linha (ficavam espaços vazios, ou "Dias a somar" caía para uma
+        /// linha própria) - por isso aqui fixa-se a posição de cada item visível manualmente.
+        /// </summary>
         private void AtualizarVisibilidadeControlos()
         {
-            lciDayOfWeek.Visibility = LayoutVisibility.Never;
-            lciDayOfMonth.Visibility = LayoutVisibility.Never;
-            lciDiaUtilMensal.Visibility = LayoutVisibility.Never;
-            lciOffsetDias.Visibility = LayoutVisibility.Never;
-
-            // 0 = Diário | 1 = Weekly | 2 = Monthly
-            switch (rgFrequency.SelectedIndex)
+            layoutControl1.BeginUpdate();
+            try
             {
-                case 0:
-                    // Diário: Apenas a hora (já está sempre visível)
-                    break;
-                case 1:
-                    // Weekly: Mostra a escolha dos dias da semana
-                    lciDayOfWeek.Visibility = LayoutVisibility.Always;
-                    break;
-                case 2:
-                    // Monthly: escolha entre dia fixo do mês ou 1º dia útil (+ dias)
-                    lciDiaUtilMensal.Visibility = LayoutVisibility.Always;
-                    if (ceDiaUtilMensal.Checked)
-                        lciOffsetDias.Visibility = LayoutVisibility.Always;
-                    else
-                        lciDayOfMonth.Visibility = LayoutVisibility.Always;
-                    break;
-            }
+                lciDayOfWeek.Visibility = LayoutVisibility.Never;
+                lciDayOfMonth.Visibility = LayoutVisibility.Never;
+                lciDiaUtilMensal.Visibility = LayoutVisibility.Never;
+                lciOffsetDias.Visibility = LayoutVisibility.Never;
 
-            layoutControl1.BestFit();
+                const int monthlySlotWidth = 220;
+                const int rowHeight = 26;
+                const int rowY = 39;
+
+                // 0 = Diário | 1 = Weekly | 2 = Monthly
+                switch (rgFrequency.SelectedIndex)
+                {
+                    case 0:
+                        // Diário: Apenas a hora
+                        lciHour.Location = new System.Drawing.Point(0, rowY);
+                        break;
+                    case 1:
+                        // Weekly: Mostra a escolha dos dias da semana
+                        lciDayOfWeek.Visibility = LayoutVisibility.Always;
+                        lciDayOfWeek.Location = new System.Drawing.Point(0, rowY);
+                        lciDayOfWeek.Size = new System.Drawing.Size(monthlySlotWidth * 2, rowHeight);
+                        lciHour.Location = new System.Drawing.Point(monthlySlotWidth * 2, rowY);
+                        break;
+                    case 2:
+                        // Monthly: 1º dia útil do mês (checkbox) + dia fixo OU dias a somar, no
+                        // mesmo slot (mutuamente exclusivos), sempre seguido da hora.
+                        lciDiaUtilMensal.Visibility = LayoutVisibility.Always;
+                        lciDiaUtilMensal.Location = new System.Drawing.Point(0, rowY);
+                        lciDiaUtilMensal.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
+
+                        if (ceDiaUtilMensal.Checked)
+                        {
+                            lciOffsetDias.Visibility = LayoutVisibility.Always;
+                            lciOffsetDias.Location = new System.Drawing.Point(monthlySlotWidth, rowY);
+                            lciOffsetDias.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
+                        }
+                        else
+                        {
+                            lciDayOfMonth.Visibility = LayoutVisibility.Always;
+                            lciDayOfMonth.Location = new System.Drawing.Point(monthlySlotWidth, rowY);
+                            lciDayOfMonth.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
+                        }
+
+                        lciHour.Location = new System.Drawing.Point(monthlySlotWidth * 2, rowY);
+                        break;
+                }
+
+                lciHour.Size = new System.Drawing.Size(250, rowHeight);
+            }
+            finally
+            {
+                layoutControl1.EndUpdate();
+            }
         }
 
         private DaysOfTheWeek ObterDiasSemanaSelecionados()
