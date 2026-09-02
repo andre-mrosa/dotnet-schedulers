@@ -220,6 +220,12 @@ namespace UserControlScheduler
                         lciDiaUtilMensal.Location = new System.Drawing.Point(0, rowY);
                         lciDiaUtilMensal.Size = new System.Drawing.Size(monthlySlotWidth, rowHeight);
 
+                        // seDayOfMonth e seOffsetDias têm de ter exatamente o mesmo tamanho: com
+                        // larguras diferentes (ex.: um SpinEdit estreito vs largo), a DevExpress
+                        // arredonda a altura interna do glifo de forma diferente e o controlo
+                        // visível acaba 1px mais baixo/alto consoante qual dos dois está ativo.
+                        seDayOfMonth.Size = seOffsetDias.Size;
+
                         if (ceDiaUtilMensal.Checked)
                         {
                             lciOffsetDias.Visibility = LayoutVisibility.Always;

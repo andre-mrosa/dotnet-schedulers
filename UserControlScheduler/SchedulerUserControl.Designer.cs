@@ -260,7 +260,7 @@ namespace UserControlScheduler
             0,
             0,
             0});
-            this.seOffsetDias.Size = new System.Drawing.Size(53, 22);
+            this.seOffsetDias.Size = new System.Drawing.Size(144, 22);
             this.seOffsetDias.StyleController = this.layoutControl1;
             this.seOffsetDias.TabIndex = 9;
             //
