@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <LangVersion>7.3</LangVersion>
+    <RootNamespace>FormScheduler</RootNamespace>
+    <AssemblyName>FormScheduler</AssemblyName>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <!-- Aponta para a pasta onde a DevExpress v25.2 está instalada nesta máquina. Numa máquina
+         diferente, sobrepor com /p:DevExpressAssembliesPath=... ou definir a variável de
+         ambiente DevExpressAssembliesPath antes de compilar. -->
+    <DevExpressAssembliesPath Condition="'$(DevExpressAssembliesPath)' == ''">C:\Program Files\DevExpress 25.2\Components\Bin\Framework\</DevExpressAssembliesPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Assemblies DevExpress instalados localmente (v25.2) - licença comercial, por isso não são
+         distribuídos via NuGet público nem incluídos neste repositório. Qualquer máquina que
+         compile este projeto precisa da DevExpress WinForms v25.2 instalada. -->
+    <Reference Include="DevExpress.Data.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.Data.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Data.Desktop.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.Data.Desktop.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Drawing.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.Drawing.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Utils.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.Utils.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraBars.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.XtraBars.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraEditors.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.XtraEditors.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraGrid.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.XtraGrid.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraLayout.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a, processorArchitecture=MSIL">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.XtraLayout.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.XtraPrinting.v25.2, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.XtraPrinting.v25.2.dll</HintPath>
+    </Reference>
+    <Reference Include="DevExpress.Printing.v25.2.Core, Version=25.2.3.0, Culture=neutral, PublicKeyToken=b88d1754d700e49a">
+      <HintPath>$(DevExpressAssembliesPath)DevExpress.Printing.v25.2.Core.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nager.Date" Version="1.33.1" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="TaskScheduler" Version="2.12.2" />
+  </ItemGroup>
+
+</Project>
