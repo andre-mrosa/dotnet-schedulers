@@ -1,6 +1,9 @@
 using UserControlScheduler.Models.Enums;
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
 
 namespace UserControlScheduler.Models
 {
@@ -30,6 +33,29 @@ namespace UserControlScheduler.Models
 
         public string Argument { get; set; }
 
-        public string TaskName => $"ScheduledTask_{Id}";
+        private string _taskName;
+
+        /// <summary>
+        /// Nome da tarefa no Task Scheduler. Guardado no JSON para que agendamentos antigos
+        /// (ScheduledTask_{Id}) continuem a apontar para a tarefa certa. Novos agendamentos usam o
+        /// nome do executável anfitrião, para se identificarem no Agendador de Tarefas.
+        /// </summary>
+        public string TaskName
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_taskName))
+                    _taskName = $"{NomeAplicacao()}_{Id}";
+                return _taskName;
+            }
+            set { _taskName = value; }
+        }
+
+        private static string NomeAplicacao()
+        {
+            string nome = Assembly.GetEntryAssembly()?.GetName().Name ?? "ScheduledTask";
+            char[] invalidos = Path.GetInvalidFileNameChars();
+            return new string(nome.Select(c => invalidos.Contains(c) ? '_' : c).ToArray());
+        }
     }
 }

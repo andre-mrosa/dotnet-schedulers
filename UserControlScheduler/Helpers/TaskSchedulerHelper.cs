@@ -1,7 +1,10 @@
+using UserControlScheduler.Models;
 using UserControlScheduler.Models.Enums;
 using Microsoft.Win32.TaskScheduler;
 using Nager.Date;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 namespace UserControlScheduler.Helpers
@@ -13,6 +16,7 @@ namespace UserControlScheduler.Helpers
     {
         /// <summary>
         /// Configura a tarefa agendada adaptando-se a qualquer frequência escolhida.
+        /// A tarefa fica registada mesmo quando ativo = false, mas desativada no Task Scheduler.
         /// </summary>
         public static void ConfigurarTarefaDinamica(
             string taskName,
@@ -21,7 +25,8 @@ namespace UserControlScheduler.Helpers
             TimeSpan horaExecucao,
             DaysOfTheWeek diasSemana = 0,
             int[] diasMes = null,
-            string argumentos = null)
+            string argumentos = null,
+            bool ativo = true)
         {
             using (TaskService ts = new TaskService())
             {
@@ -56,9 +61,11 @@ namespace UserControlScheduler.Helpers
                 trigger.StartBoundary = DateTime.Today + horaExecucao;
                 td.Triggers.Add(trigger);
 
-                // 4. Configurar a Ação (Chamar o Integrador)
-                td.Actions.Add(new ExecAction(exePath, argumentos, workingDirectory: null));
+                // 4. Configurar a Ação. Pasta de trabalho = pasta do executável (sem isto corre em System32
+                //    e qualquer caminho relativo da aplicação falha)
+                td.Actions.Add(new ExecAction(exePath, argumentos, Path.GetDirectoryName(exePath)));
                 td.Settings.StartWhenAvailable = true;
+                td.Settings.Enabled = ativo;
 
                 // 5. APAGAR a tarefa antiga primeiro (garante que não há conflitos de atualização)
                 ts.RootFolder.DeleteTask(taskName, exceptionOnNotExists: false);
@@ -82,8 +89,7 @@ namespace UserControlScheduler.Helpers
 
         /// <summary>
         /// Calcula o 1º dia útil (não fim de semana, não feriado em Portugal) do mês indicado,
-        /// somando depois offsetDiasCorridos dias de calendário (mesma lógica de cálculo de dia
-        /// útil já usada em Program.cs.ValidateSaftScheduler, generalizada para qualquer mês).
+        /// somando depois offsetDiasCorridos dias de calendário.
         /// </summary>
         public static DateTime CalcularPrimeiroDiaUtil(int ano, int mes, int offsetDiasCorridos)
         {
@@ -97,13 +103,32 @@ namespace UserControlScheduler.Helpers
         }
 
         /// <summary>
+        /// Próxima execução "1º dia útil do mês (+ offset) à hora indicada" a partir de agora.
+        /// Usa o mês atual se a data ainda não passou, senão o mês seguinte.
+        /// </summary>
+        public static DateTime CalcularProximaExecucaoDiaUtil(int offsetDiasCorridos, TimeSpan horaExecucao, DateTime agora)
+        {
+            DateTime esteMes = CalcularPrimeiroDiaUtil(agora.Year, agora.Month, offsetDiasCorridos) + horaExecucao;
+            if (esteMes > agora)
+                return esteMes;
+
+            DateTime proximoMes = new DateTime(agora.Year, agora.Month, 1).AddMonths(1);
+            return CalcularPrimeiroDiaUtil(proximoMes.Year, proximoMes.Month, offsetDiasCorridos) + horaExecucao;
+        }
+
+        public static string DescricaoDiaUtil(int offsetDias)
+        {
+            return "Execução agendada - 1º dia útil do mês"
+                + (offsetDias != 0 ? $" + {offsetDias} dia(s)" : "") + ".";
+        }
+
+        /// <summary>
         /// Configura (ou revalida) uma tarefa mensal cujo dia de execução é o 1º dia útil do mês
         /// (+ offsetDias dias corridos). Sem correspondência direta num MonthlyTrigger do Task
         /// Scheduler (que não conhece feriados portugueses), por isso usa-se um TimeTrigger para a
-        /// próxima ocorrência calculada - o que exige que este método seja chamado periodicamente
-        /// (ver revalidação no arranque da aplicação) para ir avançando a tarefa mês a mês.
-        /// Só recria a tarefa quando a data configurada não é a correta, para não bater
-        /// desnecessariamente no Task Scheduler em todos os arranques.
+        /// próxima ocorrência calculada. Tem de ser chamado em cada arranque da aplicação
+        /// (ver RevalidarAgendamentos) para a tarefa avançar mês a mês.
+        /// Só recria a tarefa quando a data ou o estado configurados não são os corretos.
         /// </summary>
         public static void ConfigurarTarefaMensalDiaUtil(
             string taskName,
@@ -111,22 +136,19 @@ namespace UserControlScheduler.Helpers
             int offsetDias,
             TimeSpan horaExecucao,
             string argumentos,
-            string descricao)
+            string descricao,
+            bool ativo = true)
         {
-            DateTime proximoMes = new DateTime(DateTime.Today.Year, DateTime.Today.Month, 1).AddMonths(1);
-            DateTime dataAlvo = CalcularPrimeiroDiaUtil(proximoMes.Year, proximoMes.Month, offsetDias) + horaExecucao;
+            DateTime dataAlvo = CalcularProximaExecucaoDiaUtil(offsetDias, horaExecucao, DateTime.Now);
 
             using (TaskService ts = new TaskService())
             {
                 Task existingTask = ts.GetTask(taskName);
                 if (existingTask != null)
                 {
-                    bool dataCorreta = existingTask.Definition.Triggers
-                        .Any(t => t.StartBoundary.Year == dataAlvo.Year &&
-                                  t.StartBoundary.Month == dataAlvo.Month &&
-                                  t.StartBoundary.Day == dataAlvo.Day);
+                    bool dataCorreta = existingTask.Definition.Triggers.Any(t => t.StartBoundary == dataAlvo);
 
-                    if (dataCorreta) return;
+                    if (dataCorreta && existingTask.Definition.Settings.Enabled == ativo) return;
 
                     ts.RootFolder.DeleteTask(taskName, exceptionOnNotExists: false);
                 }
@@ -134,11 +156,38 @@ namespace UserControlScheduler.Helpers
                 TaskDefinition td = ts.NewTask();
                 td.RegistrationInfo.Description = descricao;
                 td.Triggers.Add(new TimeTrigger { StartBoundary = dataAlvo });
-                td.Actions.Add(new ExecAction(exePath, argumentos, workingDirectory: null));
+                td.Actions.Add(new ExecAction(exePath, argumentos, Path.GetDirectoryName(exePath)));
                 td.Settings.StartWhenAvailable = true;
+                td.Settings.Enabled = ativo;
 
                 ts.RootFolder.RegisterTaskDefinition(taskName, td);
             }
+        }
+
+        /// <summary>
+        /// Revalida todos os agendamentos "1º dia útil do mês" guardados, avançando-os para a próxima
+        /// ocorrência. Chamar no arranque da aplicação anfitriã (incluindo quando é lançada pela própria
+        /// tarefa). Devolve os erros encontrados, um por agendamento, sem interromper os restantes.
+        /// </summary>
+        public static List<string> RevalidarAgendamentos(string exePath)
+        {
+            var erros = new List<string>();
+
+            foreach (ScheduleModel schedule in Settings.GetScheduleConfiguration()
+                .Where(s => s.Frequency == ScheduleFrequencyEnum.Monthly && s.MonthlyMode == MonthlyScheduleModeEnum.FirstBusinessDay))
+            {
+                try
+                {
+                    ConfigurarTarefaMensalDiaUtil(schedule.TaskName, exePath, schedule.OffsetDays, schedule.RunTime,
+                        schedule.Argument, DescricaoDiaUtil(schedule.OffsetDays), schedule.IsEnabled);
+                }
+                catch (Exception ex)
+                {
+                    erros.Add($"{schedule.TaskName}: {ex.Message}");
+                }
+            }
+
+            return erros;
         }
     }
 }

@@ -17,10 +17,14 @@ projeto sem teres de arrastar o resto.
   fixo) no Windows Task Scheduler.
 - Para "1º dia útil do mês (+ X dias)", não há um `MonthlyTrigger` nativo que conheça feriados
   portugueses - `TaskSchedulerHelper.ConfigurarTarefaMensalDiaUtil` calcula a data da próxima
-  ocorrência (via `Nager.Date`) e regista um `TimeTrigger` só para essa data. **Isto exige que a
-  aplicação anfitriã chame `ConfigurarTarefaMensalDiaUtil` novamente em cada arranque** (com os
-  mesmos parâmetros) para o agendamento avançar mês a mês - o método só recria a tarefa quando a
-  data configurada deixa de ser a correta, por isso é seguro chamá-lo sempre no arranque.
+  ocorrência (via `Nager.Date`, mês atual se ainda não passou, senão o seguinte) e regista um
+  `TimeTrigger` só para essa data. **A aplicação anfitriã tem de chamar
+  `TaskSchedulerHelper.RevalidarAgendamentos(Application.ExecutablePath)` em cada arranque**
+  (incluindo quando é lançada pela própria tarefa) para o agendamento avançar mês a mês - só
+  recria a tarefa quando a data ou o estado deixam de estar corretos, por isso é seguro chamar sempre.
+- Agendamentos desativados (toggle "Ativo") ficam registados mas desativados no Task Scheduler.
+- As tarefas são criadas com o nome `<NomeDoExecutável>_<Id>` e com a pasta do executável como
+  pasta de trabalho. Agendamentos antigos (`ScheduledTask_<Id>`) mantêm o nome guardado no JSON.
 - `Helpers/Settings.cs` persiste os agendamentos configurados em `Schedules/schedules.json`, ao
   lado do executável do processo anfitrião.
 

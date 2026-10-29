@@ -17,10 +17,9 @@ using System.Windows.Forms;
 namespace UserControlScheduler
 {
     /// <summary>
-    /// Versão standalone (Form) do agendador - conteúdo idêntico a SchedulerUserControl, para uso
-    /// direto sem necessidade de o hospedar dentro de outro form/painel. Mantida como cópia
-    /// intencional (não composição) para que ambas - UserControl e Form - possam ser reutilizadas
-    /// de forma independente noutros projetos.
+    /// Versão UserControl do agendador, para embutir dentro de outro form/painel - conteúdo idêntico
+    /// a SchedulerForm. Mantida como cópia intencional (não composição) para que ambas - UserControl
+    /// e Form - possam ser reutilizadas de forma independente noutros projetos.
     /// </summary>
     public partial class SchedulerUserControl : XtraUserControl
     {
@@ -120,9 +119,15 @@ namespace UserControlScheduler
                     Argument = cbeArgument.Text
                 };
 
+                if (selecao == 2 && newSchedule.MonthlyMode == MonthlyScheduleModeEnum.FixedDay && newSchedule.DayOfMonth > 28)
+                {
+                    if (XtraMessageBox.Show($"Os meses sem dia {newSchedule.DayOfMonth} não terão execução.\nPretende continuar?", "Aviso", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+                        return;
+                }
+
                 if (selecao == 0) // Diário
                 {
-                    TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Daily, hora, argumentos: newSchedule.Argument);
+                    TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Daily, hora, argumentos: newSchedule.Argument, ativo: newSchedule.IsEnabled);
                 }
                 else if (selecao == 1) // Weekly
                 {
@@ -134,23 +139,21 @@ namespace UserControlScheduler
                         return;
                     }
 
-                    TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Weekly, hora, diasSemana: diasEscolhidos, argumentos: newSchedule.Argument);
+                    TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Weekly, hora, diasSemana: diasEscolhidos, argumentos: newSchedule.Argument, ativo: newSchedule.IsEnabled);
                 }
                 else if (selecao == 2) // Monthly
                 {
                     if (newSchedule.MonthlyMode == MonthlyScheduleModeEnum.FirstBusinessDay)
                     {
-                        string descricao = "Execução agendada - 1º dia útil do mês"
-                            + (newSchedule.OffsetDays != 0 ? $" + {newSchedule.OffsetDays} dia(s)" : "") + ".";
-
-                        TaskSchedulerHelper.ConfigurarTarefaMensalDiaUtil(newSchedule.TaskName, exePath, newSchedule.OffsetDays, hora, newSchedule.Argument, descricao);
+                        TaskSchedulerHelper.ConfigurarTarefaMensalDiaUtil(newSchedule.TaskName, exePath, newSchedule.OffsetDays, hora, newSchedule.Argument,
+                            TaskSchedulerHelper.DescricaoDiaUtil(newSchedule.OffsetDays), newSchedule.IsEnabled);
                     }
                     else
                     {
                         int diaEscolhido = Convert.ToInt32(seDayOfMonth.Value);
                         int[] diasDoMes = new int[] { diaEscolhido };
 
-                        TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Monthly, hora, diasMes: diasDoMes, argumentos: newSchedule.Argument);
+                        TaskSchedulerHelper.ConfigurarTarefaDinamica(newSchedule.TaskName, exePath, ScheduleFrequencyEnum.Monthly, hora, diasMes: diasDoMes, argumentos: newSchedule.Argument, ativo: newSchedule.IsEnabled);
                     }
                 }
 
@@ -159,8 +162,9 @@ namespace UserControlScheduler
                 if (!Settings.SaveScheduleConfiguration(_schedulesList.ToList()))
                 {
                     XtraMessageBox.Show("Ocorreu um erro ao guardar as configurações de sincronização automática no ficheiro de configs.", "Erro", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    // Rollback add
+                    // Rollback: lista e tarefa já registada no Windows (senão fica órfã)
                     _schedulesList.RemoveAt(_schedulesList.Count - 1);
+                    try { TaskSchedulerHelper.RemoverTarefa(newSchedule.TaskName); } catch { /* sem permissões, fica para remoção manual */ }
                     return;
                 }
 
